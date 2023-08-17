@@ -1,6 +1,10 @@
 #include "Arduino.h" // general funcionality
-#include "esp_camera.h" // camera thingy // https://github.com/espressif/esp32-camera
+#include "esp_camera.h" // camera thingy https://github.com/espressif/esp32-camera
+#include "esp_timer.h"
 #include "FS.h" // file system
+//brownout thing
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
 
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
@@ -39,11 +43,11 @@ static camera_config_t config = {
   .ledc_timer = LEDC_TIMER_0,
   .ledc_channel = LEDC_CHANNEL_0,
   .pixel_format = PIXFORMAT_JPEG, 
-  .frame_size = FRAMESIZE_XGA,
-  .jpeg_quality = 12,
-  .fb_count = 1,
-  .fb_location = CAMERA_FB_IN_PSRAM,
-  .grab_mode = CAMERA_GRAB_WHEN_EMPTY
+  .frame_size = FRAMESIZE_VGA,
+  .jpeg_quality = 30,
+  .fb_count = 2
+  //.fb_location = CAMERA_FB_IN_PSRAM,
+  //.grab_mode = CAMERA_GRAB_WHEN_EMPTY
 };
 
 esp_err_t camera_init(){
@@ -58,42 +62,43 @@ void TakePicture(){
     return; 
   }
   Serial.println("Success");
+  esp_camera_fb_return(fb);
 }
 
 void setup() {
   Serial.begin(115200);  
-  
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
   esp_err_t camera;
   camera = camera_init();
 
   if(camera != ESP_OK){
     Serial.println("Camera init failed");
     return;
-   }
+  }
   
   Serial.println("Reset");
   // initialize the pushbutton pin as an input
-  pinMode(buttonPin, INPUT);
+  /// pinMode(buttonPin, INPUT);
   // initialize the LED pin as an output
-  pinMode(ledPin, OUTPUT);
+  /// pinMode(ledPin, OUTPUT);
 
   TakePicture();
 }
 
 void loop() {
   // read the state of the pushbutton value
-  buttonState = digitalRead(buttonPin);
+  ///buttonState = digitalRead(buttonPin);
   //Serial.println(buttonState);
   
   // check if the pushbutton is pressed.
   // if it is, the buttonState is HIGH
-  if (buttonState == HIGH) {
+  ///if (buttonState == HIGH) {
     // turn LED off
-    digitalWrite(ledPin, LOW);
-  } else {
+    ///digitalWrite(ledPin, LOW);
+  ///} else {
     // turn LED on
-    digitalWrite(ledPin, HIGH);
-  }
+    ///digitalWrite(ledPin, HIGH);
+  ///}
 }
 
 
