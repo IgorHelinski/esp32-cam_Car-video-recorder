@@ -6,6 +6,17 @@
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 
+#include "FS.h" // SD Card ESP32
+#include "SD_MMC.h" // SD Card ESP32
+#include <EEPROM.h> // read and write from flash memory
+
+
+// define the number of bytes you want to access
+#define EEPROM_SIZE 1
+
+// Photo File Name to save in SPIFFS
+#define FILE_PHOTO "/photo.jpg"
+
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
 
@@ -62,12 +73,28 @@ void TakePicture(){
     return; 
   }
   Serial.println("Success");
+
+  EEPROM.begin(EEPROM_SIZE);
+  photoCount = EEPROM.read(0) + 1;
+  
+  String path = "/picture/myEpicPhoto.jpg";
+  fs::FS &fs = SD_MMC;
+  File file = fs.open(path.c_str(), FILE_WRITE);
+  if(!file){
+    Serial.println("Ooopsie, failed to open file in writing mode");  
+  }
+
+  file.write(fb->buf, fb->len);
+  EEPROM.write(0, photoCount);
+    EEPROM.commit();
+  file.close();
+  
   esp_camera_fb_return(fb);
 }
 
 void setup() {
   Serial.begin(115200);  
-  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+  //WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); ////// TOCHECK!
   esp_err_t camera;
   camera = camera_init();
 
