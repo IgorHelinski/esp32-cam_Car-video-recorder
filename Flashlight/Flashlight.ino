@@ -1,7 +1,7 @@
 #include "Arduino.h" // general funcionality
 #include "esp_camera.h" // camera thingy https://github.com/espressif/esp32-camera
-#include "esp_timer.h"
 #include "FS.h" // file system
+
 //brownout thing
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
@@ -9,13 +9,7 @@
 #include "FS.h" // SD Card ESP32
 #include "SD_MMC.h" // SD Card ESP32
 #include <EEPROM.h> // read and write from flash memory
-
-
-// define the number of bytes you want to access
 #define EEPROM_SIZE 1
-
-// Photo File Name to save in SPIFFS
-#define FILE_PHOTO "/photo.jpg"
 
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
@@ -32,6 +26,7 @@ const int buttonPin = 0;  // pin number of the button
 const int ledPin =  4;    // pin number of the Flashlight LED
 
 int buttonState = 0;
+int photoCount = 0;
 
 static camera_config_t config = {
   .pin_pwdn = PWDN_GPIO_NUM,
@@ -65,6 +60,10 @@ esp_err_t camera_init(){
   return esp_camera_init(&config);  
 }
 
+String converter(uint8_t *str){
+  return String((char*)str);
+  }
+
 void TakePicture(){
   camera_fb_t *fb = NULL;
   fb = esp_camera_fb_get();
@@ -74,20 +73,29 @@ void TakePicture(){
   }
   Serial.println("Success");
 
-  EEPROM.begin(EEPROM_SIZE);
-  photoCount = EEPROM.read(0) + 1;
-  
-  String path = "/picture/myEpicPhoto.jpg";
-  fs::FS &fs = SD_MMC;
-  File file = fs.open(path.c_str(), FILE_WRITE);
-  if(!file){
-    Serial.println("Ooopsie, failed to open file in writing mode");  
-  }
 
-  file.write(fb->buf, fb->len);
-  EEPROM.write(0, photoCount);
-    EEPROM.commit();
-  file.close();
+
+  /*
+  SD card must be formated to FAT32
+  First we need to initialize the sd card with FS.h lib
+  */
+  //.begin(EEPROM_SIZE);
+  //photoCount = EEPROM.read(0) + 1;
+  
+  //String path = "/picture/myEpicPhoto.jpg";
+  //fs::FS &fs = SD_MMC;
+  //File file = fs.open(path.c_str(), FILE_WRITE);
+  //if(!file){
+    //Serial.println("Ooopsie, failed to open file in writing mode"); 
+    //return; 
+  //}
+
+  //file.write(fb->buf, fb->len);
+  //EEPROM.write(0, photoCount);
+  //EEPROM.commit();
+  //file.close();
+
+  
   
   esp_camera_fb_return(fb);
 }
@@ -108,6 +116,18 @@ void setup() {
   /// pinMode(buttonPin, INPUT);
   // initialize the LED pin as an output
   /// pinMode(ledPin, OUTPUT);
+
+  //Serial.println("Starting SD Card");
+  if(!SD_MMC.begin()){
+    Serial.println("SD Card Mount Failed");
+    return;
+  }
+  
+  uint8_t cardType = SD_MMC.cardType();
+  if(cardType == CARD_NONE){
+    Serial.println("No SD Card attached");
+    return;
+  }
 
   TakePicture();
 }
