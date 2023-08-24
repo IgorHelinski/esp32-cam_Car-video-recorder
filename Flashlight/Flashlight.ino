@@ -1,32 +1,37 @@
+/*
+Notes:
+  Pins:
+  pin 0 = button
+  pin 4 = front flashlight LED
+  pin 33 = back red LED
+  SD card:
+  must be formatted to FAT32 
+  uses up to 4GB of space 
+  tho larger cards can be used but only 4GB will be used
+*/
+
 #include "Arduino.h" // general funcionality
 #include "esp_camera.h" // camera thingy https://github.com/espressif/esp32-camera
 #include "FS.h" // file system
+#include "SD_MMC.h" // SD Card for ESP32
 
-//brownout thing
-#include "soc/soc.h"
-#include "soc/rtc_cntl_reg.h"
-
-#include "FS.h" // SD Card ESP32
-#include "SD_MMC.h" // SD Card ESP32
 #include <EEPROM.h> // read and write from flash memory
 #define EEPROM_SIZE 1
 
+// pinout
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
 
-/*
-Notes:
-pin 0 = button
-pin 4 = front flashlight LED
-pin 33 = back red LED
-*/
+//brownout thingy (not used)
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
 
 // pin numbers
 const int buttonPin = 0;  // pin number of the button
 const int ledPin =  4;    // pin number of the Flashlight LED
 
 int buttonState = 0;
-int photoCount = 0;
+int pictureNumber = 0;
 
 static camera_config_t config = {
   .pin_pwdn = PWDN_GPIO_NUM,
@@ -68,10 +73,31 @@ void TakePicture(){
   camera_fb_t *fb = NULL;
   fb = esp_camera_fb_get();
   if(!fb){
-    Serial.println("Frame buffer could not be acquierded!"); 
+    Serial.println("ERROR:Frame buffer could not be acquierded!"); 
     return; 
   }
-  Serial.println("Success");
+  Serial.println("Success!, frame buffer acquired!");
+
+  EEPROM.begin(EEPROM_SIZE);
+  pictureNumber = EEPROM.read(0) + 1;
+  String path = "/picture" + String(pictureNumber) +".jpg";
+
+  fs::FS &fs = SD_MMC; 
+  Serial.printf("Picture file name: %s\n", path.c_str());
+  
+  File file = fs.open(path.c_str(), FILE_WRITE);
+  if(!file){
+    Serial.println("Failed to open file in writing mode");
+  } 
+  else {
+    file.write(fb->buf, fb->len); // payload (image), payload length
+    Serial.printf("Saved file to path: %s\n", path.c_str());
+    EEPROM.write(0, pictureNumber);
+    EEPROM.commit();
+  }
+  file.close();
+  EEPROM.write(0, pictureNumber);
+EEPROM.commit();
 
 
 
