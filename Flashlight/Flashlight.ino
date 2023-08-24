@@ -74,6 +74,7 @@ static esp_err_t stream_handler(httpd_req_t *req){
           bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
           esp_camera_fb_return(fb);
           fb = NULL;
+          
           if(!jpeg_converted){
             Serial.println("JPEG compression failed");
             res = ESP_FAIL;
@@ -98,7 +99,7 @@ static esp_err_t stream_handler(httpd_req_t *req){
       esp_camera_fb_return(fb);
       fb = NULL;
       _jpg_buf = NULL;
-      //TakePicture();
+      
     } else if(_jpg_buf){
       free(_jpg_buf);
       _jpg_buf = NULL;
@@ -163,7 +164,8 @@ esp_err_t camera_init(){
   return esp_camera_init(&config);  
 }
 
-void TakePicture(){
+// we take bool
+void TakePicture(bool video){
   camera_fb_t *fb = NULL;
   fb = esp_camera_fb_get();
   if(!fb){
@@ -175,7 +177,12 @@ void TakePicture(){
   // get pictureNumber from EEPROM and set path for the photo
   EEPROM.begin(EEPROM_SIZE);
   pictureNumber = EEPROM.read(0) + 1;
-  String path = "/picture" + String(pictureNumber) +".jpg";
+  String path = "";
+  if(video){
+    path = "/Video_picture" + String(pictureNumber) +".jpg";
+  }else{
+    path = "/picture" + String(pictureNumber) +".jpg";
+  }
 
   // save picture to microSD card
   fs::FS &fs = SD_MMC; 
@@ -254,6 +261,7 @@ void setup() {
     return;
   }
 
+
   // BUTTON TODO
   // initialize the pushbutton pin as an input
   /// pinMode(buttonPin, INPUT);
@@ -263,7 +271,7 @@ void setup() {
   //delay(6000);
   
   //digitalWrite(ledPin, HIGH);
-  //TakePicture();
+  TakePicture(false);
 
   //esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, 0);
   //Serial.println("Entering sleep mode");
@@ -305,4 +313,5 @@ void loop() {
   ///}
   numbers++;
   Serial.println(String(numbers));
+  TakePicture(true);
 }
