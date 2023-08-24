@@ -15,14 +15,14 @@ Notes:
 #include "FS.h" // file system
 #include "SD_MMC.h" // SD Card for ESP32
 
-#include <EEPROM.h> // read and write from flash memory
-#define EEPROM_SIZE 1
+#include <EEPROM.h> // read and write from flash memory on the ESP32 https://en.wikipedia.org/wiki/EEPROM
+#define EEPROM_SIZE 1 // how many bytes to use of the EEPROM space
 
-// pinout
-#define CAMERA_MODEL_AI_THINKER
-#include "camera_pins.h"
+// pinout definition for configuration
+#define CAMERA_MODEL_AI_THINKER // camera model
+#include "camera_pins.h" // pin definitions here
 
-//brownout thingy (not used)
+// disable brownout detector thingy (errors when low power or voltage or something like that)
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 
@@ -30,9 +30,11 @@ Notes:
 const int buttonPin = 0;  // pin number of the button
 const int ledPin =  4;    // pin number of the Flashlight LED
 
+// variables
 int buttonState = 0;
-int pictureNumber = 0;
+int pictureNumber = 0; // saved in EEPROM
 
+// camera config duhh
 static camera_config_t config = {
   .pin_pwdn = PWDN_GPIO_NUM,
   .pin_reset = RESET_GPIO_NUM,
@@ -53,21 +55,18 @@ static camera_config_t config = {
   .xclk_freq_hz = 20000000,
   .ledc_timer = LEDC_TIMER_0,
   .ledc_channel = LEDC_CHANNEL_0,
-  .pixel_format = PIXFORMAT_JPEG, 
-  .frame_size = FRAMESIZE_VGA,
-  .jpeg_quality = 30,
+  .pixel_format = PIXFORMAT_JPEG, // format
+  .frame_size = FRAMESIZE_UXGA, // resolution
+  .jpeg_quality = 12, // quality
   .fb_count = 2
   //.fb_location = CAMERA_FB_IN_PSRAM,
   //.grab_mode = CAMERA_GRAB_WHEN_EMPTY
 };
 
+// initialize camera with our configuration above
 esp_err_t camera_init(){
   return esp_camera_init(&config);  
 }
-
-String converter(uint8_t *str){
-  return String((char*)str);
-  }
 
 void TakePicture(){
   camera_fb_t *fb = NULL;
@@ -78,87 +77,72 @@ void TakePicture(){
   }
   Serial.println("Success!, frame buffer acquired!");
 
+  // get pictureNumber from EEPROM and set path for the photo
   EEPROM.begin(EEPROM_SIZE);
   pictureNumber = EEPROM.read(0) + 1;
   String path = "/picture" + String(pictureNumber) +".jpg";
 
+  // save picture to microSD card
   fs::FS &fs = SD_MMC; 
-  Serial.printf("Picture file name: %s\n", path.c_str());
-  
   File file = fs.open(path.c_str(), FILE_WRITE);
   if(!file){
     Serial.println("Failed to open file in writing mode");
   } 
   else {
-    file.write(fb->buf, fb->len); // payload (image), payload length
+    // write frame buffer to the file
+    file.write(fb->buf, fb->len); // framebuffer, framebuffer length
     Serial.printf("Saved file to path: %s\n", path.c_str());
     EEPROM.write(0, pictureNumber);
     EEPROM.commit();
   }
   file.close();
   EEPROM.write(0, pictureNumber);
-EEPROM.commit();
-
-
-
-  /*
-  SD card must be formated to FAT32
-  First we need to initialize the sd card with FS.h lib
-  */
-  //.begin(EEPROM_SIZE);
-  //photoCount = EEPROM.read(0) + 1;
+  EEPROM.commit();
   
-  //String path = "/picture/myEpicPhoto.jpg";
-  //fs::FS &fs = SD_MMC;
-  //File file = fs.open(path.c_str(), FILE_WRITE);
-  //if(!file){
-    //Serial.println("Ooopsie, failed to open file in writing mode"); 
-    //return; 
-  //}
-
-  //file.write(fb->buf, fb->len);
-  //EEPROM.write(0, photoCount);
-  //EEPROM.commit();
-  //file.close();
-
-  
-  
+  // return frame buffer back for reuse
   esp_camera_fb_return(fb);
 }
 
 void setup() {
-  Serial.begin(115200);  
-  //WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); ////// TOCHECK!
+  // disable brownout detector
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); 
+  
+  Serial.begin(115200); 
+  Serial.println("Reset"); 
+
+  // initialize camera
   esp_err_t camera;
   camera = camera_init();
-
   if(camera != ESP_OK){
     Serial.println("Camera init failed");
     return;
   }
-  
-  Serial.println("Reset");
-  // initialize the pushbutton pin as an input
-  /// pinMode(buttonPin, INPUT);
-  // initialize the LED pin as an output
-  /// pinMode(ledPin, OUTPUT);
 
-  //Serial.println("Starting SD Card");
+  // mount SD card
   if(!SD_MMC.begin()){
     Serial.println("SD Card Mount Failed");
     return;
   }
-  
+
+  // check if SD card inserted
   uint8_t cardType = SD_MMC.cardType();
   if(cardType == CARD_NONE){
     Serial.println("No SD Card attached");
     return;
   }
 
+  // BUTTON TODO
+  // initialize the pushbutton pin as an input
+  /// pinMode(buttonPin, INPUT);
+  // initialize the LED pin as an output
+  /// pinMode(ledPin, OUTPUT);
+
   TakePicture();
 }
 
 void loop() {
+  // TODO
+  
   // read the state of the pushbutton value
   ///buttonState = digitalRead(buttonPin);
   //Serial.println(buttonState);
