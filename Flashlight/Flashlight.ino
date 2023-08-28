@@ -16,7 +16,7 @@ Notes:
 #include "SD_MMC.h" // SD Card for ESP32
 
 #include <EEPROM.h> // read and write from flash memory on the ESP32 https://en.wikipedia.org/wiki/EEPROM
-#define EEPROM_SIZE 1 // how many bytes to use of the EEPROM space
+#define EEPROM_SIZE 4000 // how many bytes to use of the EEPROM space
 
 // pinout definition for configuration
 #define CAMERA_MODEL_AI_THINKER // camera model
@@ -81,9 +81,23 @@ void TakePicture(bool video){
   Serial.println("Success!, frame buffer acquired!");
 
   // get pictureNumber from EEPROM and set path for the photo
-  EEPROM.begin(EEPROM_SIZE);
-  pictureNumber = EEPROM.read(0) + 1;
+  //EEPROM.begin(EEPROM_SIZE);
+  //pictureNumber = EEPROM.read(0) + 1;
   String path = "";
+  
+  File indexFile = SD_MMC.open("/index.txt", FILE_READ);
+  if(!indexFile){
+    Serial.println("Failed to open index file");
+    return;
+    }
+
+    while (indexFile.available()) {
+      pictureNumber = indexFile.read();
+    }
+    
+  indexFile.close();
+  Serial.println(String(pictureNumber));
+  
   path = "/picture" + String(pictureNumber) +".jpg";
   
   // save picture to microSD card
@@ -96,12 +110,22 @@ void TakePicture(bool video){
     // write frame buffer to the file
     file.write(fb->buf, fb->len); // framebuffer, framebuffer length
     Serial.printf("Saved file to path: %s\n", path.c_str());
-    EEPROM.write(0, pictureNumber);
-    EEPROM.commit();
+    //EEPROM.write(0, pictureNumber);
+    //EEPROM.commit();
+
+        File writeIndex = SD_MMC.open("/index.txt", FILE_WRITE);
+     
+    if (!writeIndex) {
+      Serial.println("Opening file to write failed");
+      return;
+    }
+
+    writeIndex.write(pictureNumber+1);
+    writeIndex.close();
   }
   file.close();
-  EEPROM.write(0, pictureNumber);
-  EEPROM.commit();
+  //EEPROM.write(0, pictureNumber);
+  //EEPROM.commit();
   
   // return frame buffer back for reuse
   esp_camera_fb_return(fb);
