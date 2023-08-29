@@ -15,14 +15,19 @@ Notes:
 #include "FS.h" // file system
 #include "SD_MMC.h" // SD Card for ESP32
 
+////!!! i dont use EEPROM in this project as its deprecated in favor of the Preferences.h !!!
+// tho i keep it here so you can use it if u want idk
 #include <EEPROM.h> // read and write from flash memory on the ESP32 https://en.wikipedia.org/wiki/EEPROM
-#define EEPROM_SIZE 4000 // how many bytes to use of the EEPROM space
+#define EEPROM_SIZE 1 // how many bytes to use of the EEPROM space 1 = 256
+
+// i use this:
+#include <Preferences.h>
 
 // pinout definition for configuration
 #define CAMERA_MODEL_AI_THINKER // camera model
 #include "camera_pins.h" // pin definitions here
 
-// disable brownout detector thingy (errors when low power or voltage or something like that)
+// disable brownout detector thingy (errors when low power or voltage, idk)
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 
@@ -30,11 +35,11 @@ Notes:
 const int buttonPin = 0;  // pin number of the button
 const int ledPin =  4;    // pin number of the Flashlight LED
 
-// variables
-int buttonState = 0;
-int pictureNumber = 0; // saved in EEPROM
+// instanciate preferences
+Preferences preferences;
 
-int numbers = 0;
+// saved in flash memory
+unsigned int pictureNumber = 0; 
 
 // camera config duhh
 static camera_config_t config = {
@@ -70,8 +75,7 @@ esp_err_t camera_init(){
   return esp_camera_init(&config);  
 }
 
-// we take bool
-void TakePicture(bool video){
+void TakePicture(){
   camera_fb_t *fb = NULL;
   fb = esp_camera_fb_get();
   if(!fb){
@@ -83,22 +87,8 @@ void TakePicture(bool video){
   // get pictureNumber from EEPROM and set path for the photo
   //EEPROM.begin(EEPROM_SIZE);
   //pictureNumber = EEPROM.read(0) + 1;
-  String path = "";
   
-  File indexFile = SD_MMC.open("/index.txt", FILE_READ);
-  if(!indexFile){
-    Serial.println("Failed to open index file");
-    return;
-    }
-
-    while (indexFile.available()) {
-      pictureNumber = indexFile.read();
-    }
-    
-  indexFile.close();
-  Serial.println(String(pictureNumber));
-  
-  path = "/picture" + String(pictureNumber) +".jpg";
+  String path = "/picture" + String(pictureNumber) +".jpg";
   
   // save picture to microSD card
   fs::FS &fs = SD_MMC; 
@@ -110,22 +100,11 @@ void TakePicture(bool video){
     // write frame buffer to the file
     file.write(fb->buf, fb->len); // framebuffer, framebuffer length
     Serial.printf("Saved file to path: %s\n", path.c_str());
-    //EEPROM.write(0, pictureNumber);
-    //EEPROM.commit();
 
-        File writeIndex = SD_MMC.open("/index.txt", FILE_WRITE);
-     
-    if (!writeIndex) {
-      Serial.println("Opening file to write failed");
-      return;
-    }
-
-    writeIndex.write(pictureNumber+1);
-    writeIndex.close();
+    pictureNumber++;
+    preferences.putUInt("pictureNumber", pictureNumber);
   }
   file.close();
-  //EEPROM.write(0, pictureNumber);
-  //EEPROM.commit();
   
   // return frame buffer back for reuse
   esp_camera_fb_return(fb);
@@ -186,36 +165,16 @@ void setup() {
     Serial.println("No SD Card attached");
     return;
   }
-  
-  //digitalWrite(ledPin, HIGH);
-  TakePicture(false);
-  delay(2000);
 
-  //esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, 0);
-  //Serial.println("Entering sleep mode");
-  //delay(1000); // 1sec
-  //digitalWrite(ledPin, LOW);
-  //esp_deep_sleep_start();
+  // false means its in read/write mode
+  preferences.begin("car-video-recorder", false);
+  pictureNumber = preferences.getUInt("pictureNumber", 0);
   
-  // Wi-Fi connection
-  //WiFi.begin(ssid, password);
-  //while (WiFi.status() != WL_CONNECTED) {
-  //  delay(500);
-  //  Serial.print(".");
-  //}
-  //Serial.println("");
-  //Serial.println("WiFi connected");
-  
-  //Serial.print("Camera Stream Ready! Go to: http://");
-  //Serial.print(WiFi.localIP());
-  
-  // Start streaming web server
-  //startCameraServer();
+  TakePicture();
+  delay(2000);
 }
 
 void loop() {
   delay(250); 
-  //numbers++;
-  //Serial.println(String(numbers));
-  TakePicture(true);
+  TakePicture();
 }
