@@ -8,6 +8,11 @@ Notes:
   must be formatted to FAT32 
   uses up to 4GB of space 
   tho larger cards can be used but only 4GB will be used
+  Preferences:
+  Remove all preferences under the opened namespace
+  preferences.clear();
+  Or remove the counter key only
+  preferences.remove("name")
 */
 
 #include "Arduino.h" // general funcionality
@@ -84,9 +89,9 @@ void TakePicture(){
   }
   Serial.println("Success!, frame buffer acquired!");
 
-  // get pictureNumber from EEPROM and set path for the photo
-  //EEPROM.begin(EEPROM_SIZE);
-  //pictureNumber = EEPROM.read(0) + 1;
+  // false means its in read/write mode
+  preferences.begin("my-app", false);
+  pictureNumber = preferences.getUInt("pictureNumber", 0);
   
   String path = "/picture" + String(pictureNumber) +".jpg";
   
@@ -103,6 +108,7 @@ void TakePicture(){
 
     pictureNumber++;
     preferences.putUInt("pictureNumber", pictureNumber);
+    preferences.end();
   }
   file.close();
   
@@ -110,7 +116,7 @@ void TakePicture(){
   esp_camera_fb_return(fb);
 }
 
-void cameraSettings(){
+void CameraSettings(){
     sensor_t * s = esp_camera_sensor_get();
     s->set_brightness(s, 0);     // -2 to 2
     s->set_contrast(s, 0);       // -2 to 2
@@ -151,7 +157,8 @@ void setup() {
     return;
   }
 
-  cameraSettings();
+  // set camera settings
+  CameraSettings();
   
   // mount SD card
   if(!SD_MMC.begin()){
@@ -165,16 +172,12 @@ void setup() {
     Serial.println("No SD Card attached");
     return;
   }
-
-  // false means its in read/write mode
-  preferences.begin("car-video-recorder", false);
-  pictureNumber = preferences.getUInt("pictureNumber", 0);
   
   TakePicture();
   delay(2000);
 }
 
 void loop() {
-  delay(250); 
+  delay(100); // 1/10th of a second
   TakePicture();
 }
