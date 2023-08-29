@@ -1,7 +1,7 @@
+// Silly little car dashcam recorder by Igor Heliński aka Zirael
 /*
 Notes:
   Pins:
-  pin 0 = button
   pin 4 = front flashlight LED
   pin 33 = back red LED
   SD card:
@@ -9,44 +9,37 @@ Notes:
   uses up to 4GB of space 
   tho larger cards can be used but only 4GB will be used
   Preferences:
-  Remove all preferences under the opened namespace
+  Remove all preferences under the opened namespace:
   preferences.clear();
-  Or remove the counter key only
+  Or remove the specified key only:
   preferences.remove("name")
 */
-
-#include "Arduino.h" // general funcionality
+// General esp32 libs
 #include "esp_camera.h" // camera thingy https://github.com/espressif/esp32-camera
 #include "FS.h" // file system
 #include "SD_MMC.h" // SD Card for ESP32
 
-////!!! i dont use EEPROM in this project as its deprecated in favor of the Preferences.h !!!
-// tho i keep it here so you can use it if u want idk
+// Flash memory
+//!!! i dont use EEPROM in this project as its deprecated in favor of the Preferences.h !!!
 #include <EEPROM.h> // read and write from flash memory on the ESP32 https://en.wikipedia.org/wiki/EEPROM
 #define EEPROM_SIZE 1 // how many bytes to use of the EEPROM space 1 = 256
 
-// i use this:
-#include <Preferences.h>
+#include <Preferences.h> // i use this to save to flash memory
 
 // pinout definition for configuration
-#define CAMERA_MODEL_AI_THINKER // camera model
+#define CAMERA_MODEL_AI_THINKER // camera model (check camera_pins.h to see all suported models)
 #include "camera_pins.h" // pin definitions here
 
 // disable brownout detector thingy (errors when low power or voltage, idk)
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 
-// pin numbers
-const int buttonPin = 0;  // pin number of the button
-const int ledPin =  4;    // pin number of the Flashlight LED
+const int ledPin =  4;// pin number of the Flashlight LED
 
-// instanciate preferences
-Preferences preferences;
+Preferences preferences; // instanciate preferences
+unsigned int pictureNumber = 0; // saved in flash memory
 
-// saved in flash memory
-unsigned int pictureNumber = 0; 
-
-// camera config duhh
+// camera config
 static camera_config_t config = {
   .pin_pwdn = PWDN_GPIO_NUM,
   .pin_reset = RESET_GPIO_NUM,
@@ -71,12 +64,12 @@ static camera_config_t config = {
   .frame_size = FRAMESIZE_UXGA, // resolution
   .jpeg_quality = 13, // quality
   .fb_count = 2
-  //.fb_location = CAMERA_FB_IN_PSRAM,
-  //.grab_mode = CAMERA_GRAB_WHEN_EMPTY
+  .fb_location = CAMERA_FB_IN_PSRAM,
+  .grab_mode = CAMERA_GRAB_WHEN_EMPTY
 };
 
 // initialize camera with our configuration above
-esp_err_t camera_init(){
+esp_err_t Camera_init(){
   return esp_camera_init(&config);  
 }
 
@@ -151,7 +144,7 @@ void setup() {
 
   // initialize camera
   esp_err_t camera;
-  camera = camera_init();
+  camera = Camera_init();
   if(camera != ESP_OK){
     Serial.println("Camera init failed");
     return;
@@ -174,10 +167,10 @@ void setup() {
   }
   
   TakePicture();
-  delay(2000);
+  delay(1000);
 }
 
 void loop() {
-  delay(100); // 1/10th of a second
+  delay(100); 
   TakePicture();
 }
