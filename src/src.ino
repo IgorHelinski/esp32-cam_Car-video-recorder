@@ -9,6 +9,7 @@ Notes:
   uses up to 4GB of space 
   tho larger cards can be used but only 4GB will be used
   Preferences:
+  !!! chars in .begin, .put and .get must not be larger than 15 characters
   Remove all preferences under the opened namespace:
   preferences.clear();
   Or remove the specified key only:
@@ -24,7 +25,7 @@ Notes:
 #include <EEPROM.h> // read and write from flash memory on the ESP32 https://en.wikipedia.org/wiki/EEPROM
 #define EEPROM_SIZE 1 // how many bytes to use of the EEPROM space 1 = 256
 
-#include <Preferences.h> // i use this to save to flash memory
+#include <Preferences.h> // i use this to save and read flash memory
 
 // pinout definition for configuration
 #define CAMERA_MODEL_AI_THINKER // camera model (check camera_pins.h to see all suported models)
@@ -38,6 +39,8 @@ const int ledPin =  4;// pin number of the Flashlight LED
 
 Preferences preferences; // instanciate preferences
 unsigned int pictureNumber = 0; // saved in flash memory
+
+const int delayBetweenPictures = 100; // in ms
 
 // camera config
 static camera_config_t config = {
@@ -63,7 +66,7 @@ static camera_config_t config = {
   .pixel_format = PIXFORMAT_JPEG, // format
   .frame_size = FRAMESIZE_UXGA, // resolution
   .jpeg_quality = 13, // quality
-  .fb_count = 2
+  .fb_count = 2,
   .fb_location = CAMERA_FB_IN_PSRAM,
   .grab_mode = CAMERA_GRAB_WHEN_EMPTY
 };
@@ -74,6 +77,7 @@ esp_err_t Camera_init(){
 }
 
 void TakePicture(){
+  // we get the frame buffer from camera
   camera_fb_t *fb = NULL;
   fb = esp_camera_fb_get();
   if(!fb){
@@ -84,7 +88,7 @@ void TakePicture(){
 
   // false means its in read/write mode
   preferences.begin("my-app", false);
-  pictureNumber = preferences.getUInt("pictureNumber", 0);
+  pictureNumber = preferences.getUInt("pictureNumber", 0); // if he does not find the pictureNumber then returns 0
   
   String path = "/picture" + String(pictureNumber) +".jpg";
   
@@ -166,11 +170,10 @@ void setup() {
     return;
   }
   
-  TakePicture();
   delay(1000);
 }
 
 void loop() {
-  delay(100); 
+  delay(delayBetweenPictures); 
   TakePicture();
 }
