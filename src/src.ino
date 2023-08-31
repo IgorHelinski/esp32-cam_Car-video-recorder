@@ -1,4 +1,4 @@
-// Silly little car dashcam recorder by Igor Heliński aka Zirael
+// Silly little timelapse recorder by Igor Heliński aka Zirael
 /*
 Notes:
   Pins:
@@ -15,15 +15,9 @@ Notes:
   Or remove the specified key only:
   preferences.remove("name")
 */
-// General esp32 libs
 #include "esp_camera.h" // camera thingy https://github.com/espressif/esp32-camera
 #include "FS.h" // file system
 #include "SD_MMC.h" // SD Card for ESP32
-
-// Flash memory
-//!!! i dont use EEPROM in this project as its deprecated in favor of the Preferences.h !!!
-#include <EEPROM.h> // read and write from flash memory on the ESP32 https://en.wikipedia.org/wiki/EEPROM
-#define EEPROM_SIZE 1 // how many bytes to use of the EEPROM space 1 = 256
 
 #include <Preferences.h> // i use this to save and read flash memory
 
@@ -40,7 +34,7 @@ const int ledPin =  4;// pin number of the Flashlight LED
 Preferences preferences; // instanciate preferences
 unsigned int pictureNumber = 0; // saved in flash memory
 
-const int delayBetweenPictures = 100; // in ms
+const int delayBetweenPictures = 5000; // in ms
 
 // camera config
 static camera_config_t config = {
